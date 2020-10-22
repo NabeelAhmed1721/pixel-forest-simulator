@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	_ "image/png"
 	"math"
@@ -43,6 +44,8 @@ func run() {
 		panic(err)
 	}
 
+	batch := pixel.NewBatch(&pixel.TrianglesData{}, treeSpritesheet)
+
 	var treeFrames []pixel.Rect
 
 	for x := treeSpritesheet.Bounds().Min.X; x < treeSpritesheet.Bounds().Max.X; x += 32 {
@@ -52,12 +55,15 @@ func run() {
 	}
 
 	var (
+		frames = 0
+		second = time.Tick(time.Second)
+	)
+
+	var (
 		camPos       = pixel.ZV
 		camSpeed     = 5000.0
 		camZoom      = 1.0
 		camZoomSpeed = 1.2
-		trees        []*pixel.Sprite
-		matrices     []pixel.Matrix
 	)
 
 	last := time.Now()
@@ -85,25 +91,23 @@ func run() {
 		cam := pixel.IM.Scaled(camPos, camZoom).Moved(win.Bounds().Center().Sub(camPos))
 		win.SetMatrix(cam)
 
-		if win.JustPressed(pixelgl.MouseButtonLeft) {
+		if win.Pressed(pixelgl.MouseButtonLeft) {
 			// Random tree
 			tree := pixel.NewSprite(treeSpritesheet, treeFrames[rand.Intn(len(treeFrames))])
-			trees = append(trees, tree) // append tree sprite to array
 			mouse := cam.Unproject(win.MousePosition())
-
-			matrices = append(matrices, pixel.IM.Scaled(pixel.ZV, 16).Moved(mouse))
+			tree.Draw(batch, pixel.IM.Scaled(pixel.ZV, 4).Moved(mouse))
 		}
 
-		if win.JustPressed(pixelgl.MouseButtonRight) {
-			trees = nil
-			matrices = nil
-		}
-
-		for i, tree := range trees {
-			tree.Draw(win, matrices[i])
-		}
-
+		batch.Draw(win)
 		win.Update()
+
+		frames++
+		select {
+		case <-second:
+			win.SetTitle(fmt.Sprintf("%s | FPS: %d", cfg.Title, frames))
+			frames = 0
+		default:
+		}
 	}
 }
 
